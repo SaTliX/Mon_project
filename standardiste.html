@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accueil standardiste</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Ajoutez les fichiers CSS et JS de Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.5/dist/umd/popper.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    .cursor-pointer {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header class="bg-gray-800 text-white p-4">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Accueil standardiste</h1>
+      <nav>
+        <ul class="flex space-x-4">
+          <li><a href="interventions.php" class="hover:underline">Interventions</a></li> <!-- Modifier le lien ici -->
+          <li><a href="clients.php" class="hover:underline">Clients</a></li>
+          <li><a href="logout.php" class="hover:underline">Déconnexion</a></li>
+          <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ml-4" data-bs-toggle="modal" data-bs-target="#createInterventionModal">
+            Créer une nouvelle intervention
+          </button>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Fenêtre pop-up contenant le formulaire de création d'intervention -->
+  <div class="modal fade" id="createInterventionModal" tabindex="-1" role="dialog" aria-labelledby="createInterventionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createInterventionModalLabel">Créer une nouvelle intervention</h5>
+          <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Formulaires pour créer une nouvelle intervention -->
+          <form id="createInterventionForm">
+            <!-- Sélection du client -->
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="client">Client</label>
+              <select class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="client" name="client" required>
+                <option value="">Sélectionnez un client</option>
+              </select>
+            </div>
+
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="title">Titre de l'intervention</label>
+              <input class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="title" type="text" name="title" required>
+            </div>
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="date">Date de l'intervention</label>
+              <input class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="date" type="date" name="date" required>
+            </div>
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="time">Heure de l'intervention</label>
+              <input class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="time" type="time" name="time" required>
+            </div>
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="urgency">Degré d'urgence</label>
+              <select class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="urgency" name="urgency" required>
+                <option value="">Sélectionnez un degré d'urgence</option>
+                <option value="faible">Faible</option>
+                <option value="moyen">Moyen</option>
+                <option value="eleve">Élevé</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-gray-700 font-bold mb-2" for="searchIntervenants">Rechercher un intervenant</label>
+              <input type="text" id="searchIntervenants" class="appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Entrez le nom de l'intervenant">
+            </div>
+
+            <div id="intervenantsList">
+              <!-- Liste des intervenants filtrée en fonction de la recherche -->
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" data-bs-dismiss="modal">Fermer</button>
+              <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Créer l'intervention</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Message de succès -->
+  <div id="success-message" class="alert alert-success alert-dismissible fade show" role="alert" style="display:none;">
+    <strong>Succès !</strong> <span id="success-message-text"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      // Requête AJAX pour récupérer les clients depuis le fichier PHP
+      $.ajax({
+        url: 'get_clients.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+          // Parcours des clients et ajout des options à la liste déroulante
+          response.forEach(function(client) {
+            $('#client').append('<option value="' + client.IDUtilisateur + '">' + client.Nom + ' - ID: ' + client.IDUtilisateur + '</option>');
+          });
+        },
+        error: function(xhr, status, error) {
+          console.error('Erreur AJAX :', status, error);
+        }
+      });
+
+      // Soumettre le formulaire de création d'intervention via AJAX
+      $('#createInterventionForm').submit(function(event) {
+        event.preventDefault();
+
+        // Récupérer les données du formulaire
+        var formData = $(this).serialize();
+
+        // Requête AJAX pour créer une nouvelle intervention
+        $.ajax({
+          url: 'create_intervention.php',
+          type: 'POST',
+          dataType: 'json',
+          data: formData,
+          success: function(response) {
+            // Afficher le message de succès
+            $('#success-message-text').text(response.message);
+            $('#success-message').show();
+
+            // Fermer la fenêtre modale
+            $('#createInterventionModal').modal('hide');
+          },
+          error: function(xhr, status, error) {
+            console.error('Erreur AJAX :', status, error);
+          }
+        });
+      });
+    });
+  
+      
+  $(document).ready(function() {
+  var tableBody = $('#interventionsTableBody');
+
+  // le reste de votre code
+});
+
+$(document).ready(function() {
+  // Déclarer une variable globale pour stocker les données des intervenants
+  var intervenantsData;
+
+  // Requête AJAX pour récupérer tous les intervenants depuis le serveur
+  $.ajax({
+    url: 'get_intervenants.php',
+    type: 'GET',
+    dataType: 'json',
+    success: function(response) {
+      intervenantsData = response; // Stocker les données des intervenants dans la variable globale
+      afficherIntervenants(response); // Afficher tous les intervenants lors du chargement de la page
+    },
+    error: function(xhr, status, error) {
+      console.error('Erreur AJAX :', status, error);
+    }
+  });
+
+  // Fonction de recherche des intervenants
+  $('#searchIntervenants').on('input', function() {
+    var searchValue = $(this).val().toLowerCase();
+    var intervenantsFiltres = [];
+
+    // Filtrer les intervenants en fonction de la recherche
+    intervenantsData.forEach(function(intervenant) {
+      if (intervenant.Nom.toLowerCase().includes(searchValue)) {
+        intervenantsFiltres.push(intervenant);
+      }
+    });
+
+    afficherIntervenants(intervenantsFiltres); // Afficher les intervenants filtrés
+  });
+});
+
+
+// Fonction pour afficher les intervenants dans la liste
+function afficherIntervenants(intervenants) {
+  $('#intervenantsList').empty(); // Effacer la liste actuelle des intervenants
+
+  intervenants.forEach(function(intervenant) {
+    var checkbox = $('<input>', {
+      type: 'checkbox',
+      id: 'intervenant_' + intervenant.IDUtilisateur,
+      value: intervenant.IDUtilisateur,
+      name: 'intervenants[]'
+    });
+    var label = $('<label>', {
+      for: 'intervenant_' + intervenant.IDUtilisateur,
+      text: intervenant.Nom + ' - ID: ' + intervenant.IDUtilisateur
+    });
+    $('#intervenantsList').append(checkbox, label, $('<br>'));
+  });
+}
+
+</script>
+
+
+  
+<main class="container mx-auto p-4">
+  <h2 class="text-xl font-bold mb-4">Liste des interventions</h2>
+  <table class="w-full text-left divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+      <tr>
+        <th data-order="id_intervention" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Numéro</th>
+        <th data-order="titre" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Titre</th>
+        <th data-order="id_utilisateur_client" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Client</th>
+        <th data-order="degre_urgence" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Degré d'urgence</th>
+        <th data-order="statut" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Statut de suivi</th>
+        <th data-order="date_intervention" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Date d'intervention</th>
+        <th data-order="intervenants_ids" class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">Intervenants</th>
+        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="interventionsTableBody" class="bg-white divide-y divide-gray-200">
+      <!-- Les données des interventions seront ajoutées ici par JavaScript -->
+    </tbody>
+  </table>
+</main>
+
+<script>
+  var interventionsData;
+  let currentSortColumn = '';
+  let currentSortOrder = 'asc';
+
+  // Attendre que le document soit chargé
+  $(document).ready(function() {
+    // Requête AJAX pour récupérer les données des interventions
+    $.ajax({
+      url: 'get_interventions.php',
+      type: 'GET',
+      dataType: 'json',
+      success: function(response) {
+        // Appel de la fonction pour générer les lignes du tableau avec les données récupérées
+        generateInterventionRows(response);
+      },
+      error: function(xhr, status, error) {
+        console.error('Erreur AJAX :', status, error);
+        if (xhr.responseText === '[]') {
+          alert('Aucune intervention trouvée.');
+        }
+      }
+    });
+  });
+
+
+
+    $('th[data-order]').click(function() {
+    var column = $(this).data('order');
+    currentSortColumn = column;
+    currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    getUpdatedInterventions(currentSortColumn, currentSortOrder);
+  });
+
+
+
+  function generateInterventionRows(interventions) {
+  interventionsData = interventions;
+  var tableBody = $('#interventionsTableBody');
+  tableBody.empty();
+
+  interventions.forEach(function(intervention) {
+    var row = $('<tr>');
+    row.append('<td data-column="id_intervention" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.id_intervention + '</td>');
+    row.append('<td data-column="titre" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.titre + '</td>');
+    row.append('<td data-column="id_utilisateur_client" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.id_utilisateur_client + '</td>');
+    row.append('<td data-column="degre_urgence" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.degre_urgence + '</td>');
+    row.append('<td data-column="statut" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.statut + '</td>');
+    row.append('<td data-column="date_intervention" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervention.date_intervention + '</td>');
+
+    // Vérifier si intervention.intervenants_ids est null avant d'appeler la méthode split()
+    var intervenantsIds = intervention.intervenants_ids ? intervention.intervenants_ids.split(',') : [];
+
+    row.append('<td data-column="intervenants_ids" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' + intervenantsIds.join(', ') + '</td>');
+    row.append('<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">' +
+      '<a href="#modalModification" class="btn-modifier bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Modifier</a>' +
+      '<button class="btn-annuler bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Annuler</button>' +
+      '<button class="btn-cloturer bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Clôturer</button>' +
+      '<button id="btn-commentaires" class="btn-commentaires bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Commentaires</button>' + '</td>');
+    tableBody.append(row);
+  });
+
+
+  
+
+// Attach a click event listener to the comment button
+tableBody.on('click', '.btn-commentaires', function() {
+  var interventionId = $(this).closest('tr').find('td:first').text();
+
+  // Open the modal window
+  $('#commentaireInterventionModal').modal('show');
+
+  // Attach a click event listener to the save button in the modal window
+  $('#enregistrerCommentaireBtn').off('click').on('click', function() {
+    var commentaire = $('#commentaireText').val();
+
+    $.ajax({
+  url: 'ajouter_commentaire.php',
+  type: 'POST',
+  dataType: 'json',
+  data: {
+    id_intervention: interventionId,
+    commentaire: commentaire
+  },
+  success: function(response) {
+    console.log(response);
+    // code pour afficher un message de succès ou d'erreur
+    if (response.success) {
+      // afficher un message de succès
+      alert(response.message);
+
+      // close the modal window
+      $('#commentaireInterventionModal').modal('hide');
+    } else {
+      // afficher un message d'erreur
+      alert(response.message);
+    }
+  },
+  error: function(jqXHR, textStatus, errorThrown) {
+    console.error(textStatus + ': ' + errorThrown);
+    console.error(jqXHR.responseText);
+
+    // Afficher une alerte d'erreur
+    alert('Une erreur s\'est produite lors de l\'ajout du commentaire : ' + errorThrown);
+  }
+});
+
+  });
+});
+
+
+  tableBody.off('click', '.btn-annuler').on('click', '.btn-annuler', function() {
+    var interventionId = $(this).closest('tr').find('td:first').text();
+
+    if (confirm("Êtes-vous sûr de vouloir annuler cette intervention ?")) {
+      console.log('Nouveau statut : Annulée');
+      $.ajax({
+        url: 'update_intervention_statuts.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { intervention_id: interventionId, new_status: 'Annulée' },
+        success: function(response) {
+          console.log('Statut de l\'intervention mis à jour avec succès.');
+        },
+        error: function(xhr, status, error) {
+          console.error('Erreur AJAX lors de la mise à jour du statut de l\'intervention :', status, error);
+        }
+      });
+    } else {
+      console.log('Opération d\'annulation annulée.');
+    }
+  });
+
+  tableBody.off('click', '.btn-cloturer').on('click', '.btn-cloturer', function() {
+    var interventionId = $(this).closest('tr').find('td:first').text();
+
+    if (confirm("Êtes-vous sûr de vouloir clôturer cette intervention ?")) {
+      console.log('Nouveau statut : Terminée');
+      $.ajax({
+        url: 'update_intervention_statuts.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { intervention_id: interventionId, new_status: 'Terminée' },
+        success: function(response) {
+          console.log('Statut de l\'intervention mis à jour avec succès.');
+          $(this).closest('tr').find('td:eq(3)').text('Terminée');
+        },
+        error: function(xhr, status, error) {
+          console.error('Erreur AJAX lors de la mise à jour du statut de l\'intervention :', status, error);
+        }
+      });
+    } else {
+      console.log('Opération de clôture annulée.');
+    }
+  });
+  
+
+  $(document).ready(function() {
+  // Associer un gestionnaire d'événements de clic aux boutons "Modifier"
+  $('#interventionsTableBody').on('click', '.btn-modifier', function() {
+    // Récupérer l'identifiant de l'intervention associée à cette ligne
+    var interventionId = $(this).closest('tr').find('td:first').text();
+
+    // Requête AJAX pour récupérer les données de l'intervention à modifier
+    $.ajax({
+      url: 'get_intervention.php', // Remplacez par le nom de votre fichier PHP pour récupérer une intervention spécifique
+      type: 'GET',
+      dataType: 'json',
+      data: { id: interventionId },
+      success: function(response) {
+        var statut = response.statut.toLowerCase(); // convertit la valeur de response.statut en minuscules
+        var option = $('#formModification select[name="statut_suivi"] option').filter(function() {
+            return $(this).text().toLowerCase() === statut; // compare la valeur de statut aux options du menu déroulant en minuscules
+        });
+        option.prop('selected', true); // sélectionne l'option correspondante
+        // Définir la valeur du menu déroulant "Statut suivi"
+        $('#formModification select[name="statut_suivi"]').val(statut);
+        // Remplir les autres champs du formulaire
+        $('#formModification input[name="intervention_id"]').val(response.id_intervention);
+        $('#formModification input[name="titre"]').val(response.titre);
+        $('#formModification input[name="date_intervention"]').val(response.date_intervention);
+        $('#formModification input[name="heure"]').val(response.heure); // Ajout de cette ligne
+        $('#formModification select[name="degre_urgence"]').val(response.degre_urgence);
+        // Définir la valeur du menu déroulant "Client"
+        $('#formModification select[name="client"]').val(response.id_utilisateur_client); // Utiliser response.id_utilisateur_client au lieu de response.id_client
+        // Définir la valeur du menu déroulant "Statut de suivi"
+        $('#formModification select[name="statut_suivi"]').val(response.statut);
+
+        // Récupérer les données des clients et des intervenants
+        $.ajax({
+          url: 'get_clients.php',
+          type: 'GET',
+          dataType: 'json',
+          success: function(clients) {
+            // Remplir le menu déroulant des clients avec les données récupérées
+            $('#formModification select[name="client"]').empty();
+            clients.forEach(function(client) {
+              $('#formModification select[name="client"]').append('<option value="' + client.IDUtilisateur + '">' + client.Nom + ' - ID: ' + client.IDUtilisateur + '</option>');
+            });
+
+            // Sélectionner le client associé à l'intervention dans le menu déroulant
+            $('#formModification select[name="client"]').val(response.id_utilisateur_client); // Utiliser response.id_utilisateur_client au lieu de response.id_client
+          },
+          error: function(xhr, status, error) {
+            console.error('Erreur AJAX lors de la récupération des données des clients :', status, error);
+            console.error('Statut de la requête :', xhr.status);
+            console.error('Réponse du serveur :', xhr.responseText);
+          }
+        });
+
+        // Récupérer les données des intervenants
+        $.ajax({
+          url: 'get_intervenants.php',
+          type: 'GET',
+          dataType: 'json',
+          success: function(intervenants) {
+            // Remplir la liste des intervenants avec les données récupérées
+            var intervenantsContainer = $('#intervenants_container');
+            intervenantsContainer.empty();
+            intervenants.forEach(function(intervenant) {
+              var checkbox = $('<input>', { type: 'checkbox', name: 'intervenants[]', value: intervenant.IDUtilisateur });
+              var label = $('<label>').text(intervenant.Nom);
+              var div = $('<div>').append(checkbox, label);
+              intervenantsContainer.append(div);
+            });
+
+            // Sélectionner les intervenants associés à l'intervention dans la liste
+            var intervenantsIds = response.intervenants_ids.split(',');
+            intervenantsIds.forEach(function(id) {
+              $('#intervenants_container input[value="' + id + '"]').prop('checked', true);
+            });
+          },
+          error: function(xhr, status, error) {
+            console.error('Erreur AJAX lors de la récupération des données des intervenants :', status, error);
+          }
+        });
+
+        // Afficher la fenêtre modale de modification
+        $('#modalModification').modal('show');
+      },
+
+      error: function(xhr, status, error) {
+        console.error('Erreur AJAX lors de la récupération des données de l\'intervention :', status, error);
+      }
+    });
+  });
+
+  // Associer un gestionnaire d'événements de clic au bouton "Enregistrer les modifications" dans la fenêtre modale de modification
+  $('#modalModification').on('click', '.btn-modifier-intervention', function() {
+    // Récupérer les données du formulaire de modification
+    var formData = $('#formModification').serializeArray();
+
+    // Ajouter les IDs des intervenants à formData
+    var intervenantsIds = $('#intervenants_container input:checked').map(function() {
+      return this.value;
+    }).get().join(',');
+    formData.push({name: "intervenants_ids", value: intervenantsIds});
+
+    // Vérifier si les données du formulaire sont valides
+    var isValid = true;
+    formData.forEach(function(field) {
+      if (!field.value) {
+        isValid = false;
+      }
+    });
+
+    if (!isValid) { 
+      console.error('Données invalides.');
+      return;
+    }
+    console.log(formData);
+    // Envoyer une requête AJAX pour mettre à jour les données de l'intervention dans la base de données
+    $.ajax({
+      url: 'update_intervention.php', // remplacez par le nom de votre fichier PHP pour la mise à jour des données
+      type: 'POST',
+      dataType: 'json',
+      data: formData,
+      success: function(response) {
+        console.log('Réponse du serveur : ', response);
+        if (response.success) {
+          console.log('Intervention modifiée avec succès.');
+
+          // Mettre à jour l'affichage de la ligne correspondante dans le tableau
+          var interventionId = $('#formModification input[name="intervention_id"]').val();
+          var interventionData = {};
+          formData.forEach(function(value, key) {
+            interventionData[key] = value;
+          });
+          var row = tableBody.find('tr td:first-child:contains("' + interventionId + '")').parent();
+          row.find('td:nth-child(1)').text(interventionData.titre);
+          row.find('td:nth-child(2)').text(interventionData.date_intervention);
+          row.find('td:nth-child(3)').text(interventionData.statut);
+          row.find('td:nth-child(4)').text(interventionData.id_utilisateur_client);
+          row.find('td:nth-child(5)').text(interventionData.heure);
+          row.find('td:nth-child(6)').text(interventionData.id_utilisateur_intervenant);
+
+          // Fermer la fenêtre modale de modification
+          $('#modalModification').modal('hide');
+        }
+      } ,
+      error: function(xhr, status, error) {
+        console.error('Erreur AJAX lors de la modification de l\'intervention :', status, error);
+        console.error('Réponse du serveur : ', xhr.responseText); // cela enregistrera la réponse du serveur
+
+      }
+    });
+  });
+});
+  }
+
+function getUpdatedInterventions(sortColumn, sortOrder) {
+  // Assurez-vous de définir correctement currentSortColumn et currentSortOrder avant d'envoyer la requête
+  $.ajax({
+    url: 'get_interventions.php',
+    type: 'GET',
+    dataType: 'json',
+    data: {
+      sortColumn: currentSortColumn,
+      sortOrder: currentSortOrder
+    },
+    success: function(response) {
+      generateInterventionRows(response);
+    },
+    error: function(xhr, status, error) {
+      console.error('Erreur AJAX :', status, error);
+    }
+  });
+}
+
+  </script>
+  <!-- Modal window for adding comments -->
+<div class="modal fade" id="commentaireInterventionModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Ajouter un commentaire</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <textarea id="commentaireText" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button id="enregistrerCommentaireBtn" type="button" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+ <!-- Fenêtre modale de modification d'intervention -->
+<div class="modal fade" id="modalModification" tabindex="-1" role="dialog" aria-labelledby="modalModificationLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalModificationLabel">Modifier une intervention</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Formulaire de modification d'intervention -->
+        <form id="formModification">
+          <input type="hidden" name="intervention_id">
+          <div class="form-group">
+            <label for="titre">Titre de l'intervention</label>
+            <input type="text" class="form-control" name="titre" required>
+          </div>
+          <div class="form-group">
+            <label for="date_intervention">Date de l'intervention</label>
+            <input type="date" class="form-control" name="date_intervention" required>
+          </div>
+          <div class="form-group">
+            <label for="heure">Heure de l'intervention</label>
+            <input type="time" class="form-control" name="heure" required>
+          </div>
+          <div class="form-group">
+            <label for="degre_urgence">Degré d'urgence</label>
+            <select class="form-control" name="degre_urgence" required>
+              <option value="">Sélectionner</option>
+              <option value="Faible">Faible</option>
+              <option value="Moyen">Moyen</option>
+              <option value="Eleve">Élevé</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="client">Client</label>
+            <select class="form-control" name="client" required>
+              <!-- Les options seront ajoutées dynamiquement à partir des données récupérées -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="statut">Statut de suivi</label>
+            <select class="form-control" name="statut_suivi" required>
+              <option value="">Sélectionner</option>
+              <option value="En cours">En cours</option>
+              <option value="Terminée">Terminée</option>
+              <option value="Annulée">Annulée</option>
+              <option value="En attente">En attente</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="intervenants">Intervenants</label>
+            <div id="intervenants_container">
+              <!-- Les cases à cocher seront ajoutées dynamiquement à partir des données récupérées -->
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary btn-modifier-intervention">Enregistrer les modifications</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+  </body>
+  </html>
